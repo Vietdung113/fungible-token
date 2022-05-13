@@ -49,20 +49,14 @@ impl Contract {
         };
         this.token.internal_register_account(&owner_id);
         this.token.internal_deposit(&owner_id, total_supply.into());
-        // near_contract_standards::fungible_token
-        // near_contract_standards::fungible_token::events::FtMint{
-        //     owner_id: &owner_id,
-        //     amount: &total_supply,
-        //     memo: Some("Initial tokens supply is minted"),
-        // }.emit();
         this
     }
     fn on_account_closed(&mut self, account_id: AccountId, balance:Balance) {
         log!("Closed @{} with {}", account_id, balance);
     }
-    fn on_tokens_burned(&mut self, account_id: AccountId, amount: Balance) {
-        log!("Account @{} burned {}", account_id, amount);
-    }
+    // fn on_tokens_burned(&mut self, account_id: AccountId, amount: Balance) {
+    //     log!("Account @{} burned {}", account_id, amount);
+    // }
 }
 
 
@@ -78,6 +72,7 @@ impl FungibleTokenCore for Contract {
     }
 
     fn ft_total_supply(&self) -> U128 {
+        log!("total supply: {:?}", self.token.ft_total_supply());
         self.token.ft_total_supply()
     }
 
@@ -143,30 +138,24 @@ impl FungibleTokenMetadataProvider for Contract {
 mod tests {
     use near_sdk::test_utils::{accounts, VMContextBuilder};
     use near_sdk::MockedBlockchain;
-    use near_sdk::{testing_env, Balance};
+    use near_sdk::{testing_env, Balance, VMContext};
     use super::*;
     const TOTAL_SUPPLY: Balance = 1_000_000_000_000_000;
 
-    fn get_context(predecessor_account_id: AccountId) -> VMContextBuilder {
-        let mut builder = VMContextBuilder::new();
-
-        builder
-        .current_account_id(accounts(0))
-        .signer_account_id(predecessor_account_id.clone())
-        .predecessor_account_id(predecessor_account_id);
-
-        builder
+    fn get_context(is_view: bool) -> VMContext{
+        VMContextBuilder::new()
+        .signer_account_id("dungdv1.testnet".try_into().unwrap())
+        .is_view(is_view)
+        .build()
     }
 
     #[test]
-    fn test_new() {
-        let mut context = get_context(accounts(1));
-        testing_env!(context.build());
+    fn test_init(){
+        let context = get_context(false);
+        testing_env!(context);
         let contract = Contract::new_default_meta(accounts(1).into(), TOTAL_SUPPLY.into());
-        testing_env!(context.is_view(true).build());
+        log!("Total supply: {:?}", contract.ft_total_supply());
         assert_eq!(contract.ft_total_supply().0, TOTAL_SUPPLY);
-        assert_eq!(contract.ft_balance_of(accounts(1)), TOTAL_SUPPLY);
+        assert_eq!(contract.ft_balance_of(accounts(1)).0, TOTAL_SUPPLY);
     }
-
-
 }
